@@ -86,6 +86,7 @@ export class ElmHttpRequestInterceptor implements IElmHttpRequestInterceptor {
 				Object.defineProperty(this, "status", { writable: true });
 				Object.defineProperty(this, "readyState", { writable: true });
 				const data = JSON.parse(body.toString());
+				console.log("HERE", data);
 				let fn;
 				for (const route of this.interceptor.__routes__) {
 					if (route.method === data.method) {
@@ -103,10 +104,21 @@ export class ElmHttpRequestInterceptor implements IElmHttpRequestInterceptor {
 					this.dispatchEvent(new Event("load"));
 					return;
 				}
-				fn(data.body)
+				let fnData = data.body;
+				try {
+					fnData = JSON.parse(data.body);
+				} catch {
+					// do nothing
+				}
+				console.log("FN DATA", fnData);
+				fn(fnData)
 					.then((resp) => {
 						this.status = 200;
-						this.response = JSON.stringify(resp);
+						if (typeof resp === "object" && resp !== null) {
+							this.response = JSON.stringify(resp);
+						} else {
+							this.response = resp;
+						}
 					})
 					.catch((_err: unknown) => {
 						this.status = 500;

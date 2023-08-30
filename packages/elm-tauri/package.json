@@ -1,0 +1,17 @@
+{
+  "name": "@elmkit/elm-tauri",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "typecheck": "tsc --project ./tsconfig.json --noEmit --pretty",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@elmkit/elm-promise": "workspace:*",
+    "@tauri-apps/api": "^1.4.0"
+  }
+}

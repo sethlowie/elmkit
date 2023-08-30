@@ -1,0 +1,10 @@
+{
+  "extends": "tsconfig/base.json",
+  "include": ["."],
+  "exclude": ["dist", "build", "node_modules"],
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "lib": ["es2018", "dom"],
+  }
+}

@@ -1,11 +1,14 @@
 module Promise exposing
     ( Error(..)
     , Promise
+    , PromiseExpect
     , createPromise
     , createPromiseModule
     , execute
     , expectJson
+    , expectString
     , expectWhatever
+    , withBody
     , withExpect
     )
 
@@ -25,6 +28,7 @@ type Error
 type PromiseExpect a msg
     = Whatever (Result Error () -> msg)
     | Json (Result Error a -> msg) (D.Decoder a)
+    | ExpectString (Result Error String -> msg)
 
 
 createPromiseModule : String -> Promise a ()
@@ -33,6 +37,7 @@ createPromiseModule nameSpace =
     , method = "GET"
     , url = ""
     , expect = Whatever (\_ -> ())
+    , body = Nothing
     }
 
 
@@ -47,7 +52,13 @@ withExpect f promise =
     , method = promise.method
     , nameSpace = promise.nameSpace
     , expect = f
+    , body = promise.body
     }
+
+
+expectString : (Result Error String -> msg) -> PromiseExpect String msg
+expectString =
+    ExpectString
 
 
 expectJson : (Result Error a -> msg) -> D.Decoder a -> PromiseExpect a msg
@@ -82,6 +93,25 @@ toHttpExpect expect =
                         Http.GoodStatus_ metadata body ->
                             Ok ()
 
+        ExpectString hnd ->
+            Http.expectStringResponse hnd <|
+                \response ->
+                    case response of
+                        Http.BadUrl_ url ->
+                            Err (BadRequest <| "Bad URL: " ++ url)
+
+                        Http.Timeout_ ->
+                            Err Timeout
+
+                        Http.NetworkError_ ->
+                            Err UnknownError
+
+                        Http.BadStatus_ metadata body ->
+                            Err (BadStatus metadata.statusCode body)
+
+                        Http.GoodStatus_ metadata body ->
+                            Ok body
+
         Json hnd decoder ->
             Http.expectStringResponse hnd <|
                 \response ->
@@ -112,7 +142,13 @@ type alias Promise a msg =
     , method : String
     , url : String
     , expect : PromiseExpect a msg
+    , body : Maybe E.Value
     }
+
+
+withBody : E.Value -> Promise a msg -> Promise a msg
+withBody body promise =
+    { promise | body = Just body }
 
 
 execute : Promise a msg -> Cmd msg
@@ -124,10 +160,18 @@ execute p =
         , body =
             Http.jsonBody
                 (E.object
-                    [ ( "headers", E.object [] )
-                    , ( "method", E.string p.method )
-                    , ( "url", E.string p.url )
-                    ]
+                    ([ ( "headers", E.object [] )
+                     , ( "method", E.string p.method )
+                     , ( "url", E.string p.url )
+                     ]
+                        ++ (case p.body of
+                                Just body ->
+                                    [ ( "body", E.string (E.encode 0 body) ) ]
+
+                                Nothing ->
+                                    []
+                           )
+                    )
                 )
         , expect = toHttpExpect p.expect
         , timeout = Nothing
